@@ -16,9 +16,9 @@ const ONE_MIN = 1e3 * 60
 const ONE_DAY = ONE_MIN * 60 * 24
 global.tradesLog = []
 const allSymbolsCandles = {};
-// const { publishPerf, loadCandles, listenToPriceChange, changePercent } = require('./binance-utils')
+const { publishPerf, loadCandles, listenToPriceChange, changePercent } = require('./binance-utils')
 // const loadPrevious = require('./load_previous_data')
-// require('./progress/viewProgess')
+require('./viewProgess')
 const formatMoment = (time) => moment(time).tz(TIME_ZONE).format('DD MMM HH:mm')
 
 module.exports = async (algo, fromTime, toTime) => {
@@ -83,27 +83,25 @@ module.exports = async (algo, fromTime, toTime) => {
                 closeTime: moment(t.closeTime).tz(TIME_ZONE).format('DD MMM HH:mm'),
                 inChange: t.inChange.toFixed(2),
                 // inTime: moment(t.inTime).tz(TIME_ZONE).format('DD MMM HH:mm'),
-                open: (+t.open).toFixed(8),
-                close: (+t.close).toFixed(8),
-                high: (+t.high).toFixed(8),
-                low: (+t.low).toFixed(8),
-                min: (+t.min).toFixed(8),
+                open: "'" + (+t.open).toFixed(8),
+                close: "'" + (+t.close).toFixed(8),
+                high: "'" + (+t.high).toFixed(8),
+                low: "'" + (+t.low).toFixed(8),
+                // minToHigh: (+t.minToHigh).toFixed(8),
                 max_lost: t.max_lost.toFixed(2),
                 change: t.change.toFixed(2),
                 highChange: t.highChange.toFixed(2),
                 lowChange: t.lowChange.toFixed(2),
-                minToHighChange: (t.minToHighChange || NaN).toFixed(2),
+                minToHighChange: (t.minToHighChange ).toFixed(2),
             }));
             logs = [_.mapValues(_.first(logs), (v, k) => k)].concat(logs)
             let txt = _.map(logs, log => _.values(log).join('\t')).join('\n')
-            fs.writeFileSync(`${process.env.HOME}/tmp/m24-logs/${firstTrade.strategy}_${moment(firstTrade.inTime).format('DD MMM')}.tsv`, txt)
+            let logFileName = `${process.env.HOME}/tmp/m24-logs/${firstTrade.strategy}_${moment(firstTrade.inTime).format('DD_MMM')}.tsv`
+            fs.writeFileSync(logFileName, txt)
+            console.log('log saved in ', logFileName)
+        }else{
+            console.log('No Pair Match')
         }
 
     }
-
-
-    const { FROM_DATE, TO_DATE } = process.env;
-
-    const startTime = /^\d\d\d\d-\d\d-\d\d$/.test(FROM_DATE) && +new Date(FROM_DATE)
-    let closeTime = /^\d\d\d\d-\d\d-\d\d$/.test(FROM_DATE) && +new Date(TO_DATE);
 }

@@ -64,7 +64,7 @@ async function loadPreviousPeriod(startTime, closeTime, allSymbolsCandles = {}) 
 
 async function loadPreviousDate(symbols, date, allSymbolsCandles = {}) {
     console.log('loading old data for ', new Date(date))
-    const errors = [];
+    const symbols2 = [];
     for (const symbol of symbols) {
         console.log('loading old data for ', symbol)
 
@@ -86,11 +86,11 @@ async function loadPreviousDate(symbols, date, allSymbolsCandles = {}) {
             console.log(symbol, date, 'saved')
             // debugger
         } catch (e) {
-            console.log(symbol, e.message);
+            console.log(symbol, e.message || e);
             if (e.stop || e.code === 'MISCONF') throw e
-            errors.push(symbol);
+            symbols2.push(symbol);
         }
     }
-    errors.length && await new Promise((resolve) =>
-        setTimeout(() => resolve(loadPrevious(errors, date, allSymbolsCandles), 30 * 1e3)))
+    symbols2.length && await new Promise((resolve) =>
+        setTimeout(() => resolve(loadPreviousDate(symbols2, date, allSymbolsCandles), 30 * 1e3)))
 }

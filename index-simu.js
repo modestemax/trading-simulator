@@ -13,7 +13,7 @@ program
     .option('-f, --from-date <date> ', 'from date', /^\d\d\d\d-\d\d-\d\d$/)
     .option('-t, --to-date [date] ', 'to date optional', /^\d\d\d\d-\d\d-\d\d$/)
     .action(() => {
-        debugger
+        // debugger
         const cmd = program
         if (typeof cmd.fromDate === 'string') {
             fromDate = moment(new Date(cmd.fromDate))

@@ -252,14 +252,14 @@ module.exports = {
     setAlgo(name) {
         try {
             strategyName = name
+            const options = { H24: global.H24, log, changePercent }
             const { initLast, switchOrRealBuy } = require('./' + name)
-            buy.initLast = initLast
-            run.switchOrRealBuy = switchOrRealBuy
-            const options = { H24: global.H24, changePercent }
-            Object.assign(initLast, options)
-            Object.assign(switchOrRealBuy, options)
+            buy.initLast = initLast.bind(options)
+            run.switchOrRealBuy = switchOrRealBuy.bind(options)
+
         } catch (e) {
             console.error(e)
+            process.exit(1)
         }
     },
     priceChanged({ symbols, allSymbolsCandles, fromTime, nowTime }) {

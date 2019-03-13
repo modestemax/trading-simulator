@@ -1,12 +1,13 @@
+const _ = require('lodash')
 let switchReason
 const TOP_GAIN = 5
 const FIRST_SECOND_DELTA = 2
 
 module.exports = {
     initLast({ first, second, }) {
-        const { changePercent, H24 } = initLast
+        const { changePercent, H24 , log} = this
         if (H24 && changePercent(first.close, H24 [first.symbol].highPrice) > 5) return
-        last = first;
+     let    last = first;
         let last_last = _.last(log) || { ...second, openChange: second.change }
         if (first.change > last_last.openChange) {
             let diffChange = (first.change - last_last.openChange)
