@@ -23,7 +23,8 @@ const formatMoment = (time) => moment(time).tz(TIME_ZONE).format('DD MMM HH:mm')
 
 module.exports = async (algo, fromTime, toTime) => {
     try {
-        const { priceChanged } = require(`./algos/${algo}`);
+        const { priceChanged, setAlgo } = require(`./algos`);
+        setAlgo(algo)
         console.log('simulating', algo, formatMoment(fromTime), ' - ', formatMoment(toTime))
         await startSimulation(fromTime, toTime, priceChanged)
     } catch (e) {
