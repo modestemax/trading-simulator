@@ -17,7 +17,7 @@ program
         const cmd = program
         if (typeof cmd.fromDate === 'string') {
             fromDate = moment(new Date(cmd.fromDate))
-            toDate = moment(new Date(cmd.toDate))
+            toDate = moment(new Date(cmd.toDate)).endOf('day')
             if (typeof cmd.toDate !== 'string') {
                 toDate = fromDate.clone().endOf('day')
             }
