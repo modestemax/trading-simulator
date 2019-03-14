@@ -37,7 +37,7 @@ process.nextTick(() => {
         return id;
     }
 
-    subscribe('m24:simulate', ({ symbol, strategy, open, stop, limit, target, unique, time, inTime, inChange }) => {
+    subscribe('m24:simulate', ({ symbol, strategy, open, stop, limit, target, stopLost, unique, time, inTime, inChange }) => {
         trades[symbol] = trades[symbol] || {}
         let id = getId(strategy, symbol, unique)
         if (!trades[symbol][id]) {
@@ -49,8 +49,10 @@ process.nextTick(() => {
             console.log(text)
             let trade = trades[symbol][id] = {
                 id, open, stop, limit, symbol, strategy, time: time || Date.now(),
-                target: target || TARGET, inChange, inTime,
-                minToHigh:open
+                target: target || TARGET,
+                stopLost: stopLost || LOSS,
+                inChange, inTime,
+                minToHigh: open
             }
             tradesByIds[id].push(trade)
             global.tradesLog.push(trade)
@@ -100,17 +102,18 @@ ${limit ? `limit  ${limit.toFixed(8)}` : ''}`
             trade.low = _.min([trade.low, close])
 
             trade.minToHigh = trade.high > trade.oldHigh ? trade.low : trade.minToHigh
-            trade.max_lost = _.max([trade.high - trade.close, trade.max_lost])
+            trade.maxLost = _.max([trade.high - trade.close, trade.maxLost])
             trade.oldChange = isNaN(trade.change) ? -Infinity : trade.change
             trade.change = changePercent(trade.open, trade.close)
             let highChange = trade.highChange = changePercent(trade.open, trade.high)
             let lowChange = trade.lowChange = changePercent(trade.open, trade.low)
             let minToHighChange = trade.minToHighChange = changePercent(trade.open, trade.minToHigh)
+            let maxLosTChange = trade.maxLostChange = changePercent(trade.open, trade.open + trade.maxLost)
 
             let fd = 0
             if (trade.change.toFixed(fd) !== trade.oldChange.toFixed(fd)) {
 
-                const lost = trade.lost = lowChange <= LOSS
+                const lost = trade.lost = lowChange <= trade.stopLost
                 const win = trade.win = highChange >= trade.target
                 trade.timeEnd = trade.timeEnd || (win && Date.now()) || void 0
                 // trade.minToHigh = trade.minToHigh || (win && trade.low) || void 0

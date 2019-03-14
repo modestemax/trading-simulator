@@ -19,10 +19,12 @@ const allSymbolsCandles = {};
 const { publishPerf, loadCandles, listenToPriceChange, changePercent } = require('./binance-utils')
 // const loadPrevious = require('./load_previous_data')
 require('./viewProgess')
+
 const formatMoment = (time) => moment(time).tz(TIME_ZONE).format('DD MMM HH:mm')
 
 module.exports = async (algo, fromTime, toTime) => {
     try {
+        initLog(algo, fromTime)
         const { priceChanged, setAlgo } = require(`./algos`);
         setAlgo(algo)
         console.log('simulating', algo, formatMoment(fromTime), ' - ', formatMoment(toTime))
@@ -88,20 +90,38 @@ module.exports = async (algo, fromTime, toTime) => {
                 high: "'" + (+t.high).toFixed(8),
                 low: "'" + (+t.low).toFixed(8),
                 // minToHigh: (+t.minToHigh).toFixed(8),
-                max_lost: t.max_lost.toFixed(2),
                 change: t.change.toFixed(2),
                 highChange: t.highChange.toFixed(2),
                 lowChange: t.lowChange.toFixed(2),
-                minToHighChange: (t.minToHighChange ).toFixed(2),
+                minToHighChange: (t.minToHighChange).toFixed(2),
+                maxLostChange: t.maxLostChange.toFixed(2),
+
             }));
             logs = [_.mapValues(_.first(logs), (v, k) => k)].concat(logs)
             let txt = _.map(logs, log => _.values(log).join('\t')).join('\n')
-            let logFileName = `${process.env.HOME}/tmp/m24-logs/${firstTrade.strategy}_${moment(firstTrade.inTime).format('DD_MMM')}.tsv`
+            let logFileName = getLogFileName(firstTrade.strategy, firstTrade.inTime) + '.tsv'
             fs.writeFileSync(logFileName, txt)
             console.log('log saved in ', logFileName)
-        }else{
+        } else {
             console.log('No Pair Match')
         }
 
+    }
+}
+
+function getLogFileName(algo, time) {
+    return `${process.env.HOME}/tmp/m24-logs/${algo}_${moment(time).tz(TIME_ZONE).format('DD_MMM')}`
+}
+
+function initLog(algo, time) {
+    const logfn = console.log
+    try {
+        fs.unlinkSync(getLogFileName(algo, time) + '.log');
+    }catch (e) {
+        
+    }
+    console.log = (...args) => {
+        logfn.apply(console, args)
+        fs.appendFileSync(getLogFileName(algo, time) + '.log',args.join(' ')+'\n');
     }
 }

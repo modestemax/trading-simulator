@@ -54,6 +54,7 @@ function run(screener) {
                         symbol: last.symbol,
                         open: last.close,
                         target: 200,
+                        stopLost: -200,
                         unique: true,
                         time: last.closeTime,
                         inTime: last.startTime,
@@ -107,7 +108,8 @@ function buy() {
     if (last) {
         log.push(last);
         last.openPrice = last.close;
-        const text = `#${log.length}buy #buy #buy_${last.symbol} ${last.symbol} at ${last.close} [${last.change.toFixed(2)}%]`
+        const text = `\n--------------------------
+#${log.length}buy #buy #buy_${last.symbol} ${last.symbol} at ${last.close} [${last.change.toFixed(2)}%]`
         publish(`m24:algo:tracking`, {
             max: true,
             strategyName,
@@ -132,11 +134,14 @@ function sell(sellReason) {
 
 function logSell(sellReason) {
 
-    const text = `#${log.length}sell #sell #sell_${last.symbol} #${last.symbol} at ${last.close}
+    const text = `\n---------------------------------
+#${log.length}sell #sell #sell_${last.symbol} #${last.symbol} at ${last.close}
 sell reason #${sellReason || '#sell_reason_unknow'}   
 gain ${last.gain.toFixed(2)}%  #${last.gain > 0 ? 'win' : 'lost'}
 Max gain ${last.maxGain.toFixed(2)}% 
-[${last.change.toFixed(2)}%]`;
+Close ${last.close}% 
+[${last.change.toFixed(2)}%]
+`;
 
     publish(`m24:algo:tracking`, {
         max: true,
@@ -152,13 +157,14 @@ function calculateGain() {
     last.maxGain = _.max([last.gain, last.maxGain])
     let fd = 0
     if (last.prevGain.toFixed(fd) != last.gain.toFixed(fd)) {
-        const text = `#${log.length}gain 
+        const text = `\n-----------------------
+#${log.length}gain 
 ${last.symbol}  ${last.gain.toFixed(2)}% 
 Max gain ${last.maxGain.toFixed(2)}%
 time ${moment(last.closeTime).tz(TIME_ZONE).format('DD MMM HH:mm')}
 ------------
-first ${first.symbol} ${first.change.toFixed(2)}%
-second ${second.symbol} ${second.change.toFixed(2)}%
+first ${first.symbol} ${first.close}  ${first.change.toFixed(2)}%
+second ${second.symbol} ${second.close}  ${second.change.toFixed(2)}%
 diff ${(first.change - second.change).toFixed(2)}%
          
          `
@@ -197,8 +203,9 @@ function collectProfit() {
 function logFirst() {
     if (first) {
         if (first.change.toFixed(1) != first_change.toFixed(1)) {
-            let text = `first ${first.symbol} ${first.change.toFixed(2)}%
-second ${second.symbol} ${second.change.toFixed(2)}%
+            let text = `\n--------------------
+first ${first.symbol} ${first.close} ${first.change.toFixed(2)}%
+second ${second.symbol}  ${second.close} ${second.change.toFixed(2)}%
 diff ${(first.change - second.change).toFixed(2)}%`
 
             let id = strategyName + 'first'
