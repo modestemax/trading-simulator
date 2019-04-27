@@ -17,7 +17,7 @@ const ONE_DAY = ONE_MIN * 60 * 24
 global.tradesLog = []
 const allSymbolsCandles = {};
 const { publishPerf, loadCandles, listenToPriceChange, changePercent } = require('./binance-utils')
-// const loadPrevious = require('./load_previous_data')
+const { loadPreviousDate } = require('./load-previous-candles')
 require('./viewProgess')
 
 const formatMoment = (time) => moment(time).tz(TIME_ZONE).format('DD MMM HH:mm')
@@ -42,37 +42,53 @@ module.exports = async (algo, fromTime, toTime) => {
     }
 
     async function simulate(symbols, startTime, closeTime, priceChanged) {
+
         for (let date = startTime; date < closeTime; date += ONE_MIN) {
-            console.log('tick', moment(date).tz(TIME_ZONE).format('HH:mm'))
-            await Promise.mapSeries(symbols, async function loadLocal(symbol) {
-                let data = await redis.hmgetAsync(symbol, +date)
-                if (data && (_.isArray(data) ? data[0] : true)) {
-                    try {
-                        let candle = JSON.parse(data)
-                        allSymbolsCandles[symbol] = allSymbolsCandles[symbol] || {}
-                        allSymbolsCandles[symbol][+date] = candle
-                        // console.log('tick', symbol, moment(date).tz(TIME_ZONE).format('HH:mm'))
-                        publish('price', { symbol, fromTime: startTime, ...candle })
-                    } catch (e) {
-                        console.log(e)
-                    }
-                } else {
-                    // await loadPrevious([symbol], date)
-                    // await loadLocal(symbol)
-                    // loadPrevious([symbol], date).then(() => loadLocal(symbol)).catch(_.noop)
-                    let index = symbols.indexOf(symbol)
-                    ~index && symbols.splice(index, 1)
-                }
-            });
-            priceChanged({
-                symbols,
-                fromTime: startTime, nowTime: date,
-                allSymbolsCandles
+            await new Promise(resolve => {
+                setTimeout(async () => {
+                    console.log('tick', moment(date).tz(TIME_ZONE).format('HH:mm'))
+                    await Promise.mapSeries(symbols, async function loadLocalOrRemote(symbol) {
+                        let data = await redis.hmgetAsync(symbol, +date)
+                        // /*--------------------------------
+                        data = data || await getBinanceCandle(symbol, +date)
+                        // ----------------------------------*/
+                        if (data && (_.isArray(data) ? data[0] : true)) {
+                            try {
+                                let candle = JSON.parse(data)
+                                allSymbolsCandles[symbol] = allSymbolsCandles[symbol] || {}
+                                allSymbolsCandles[symbol][+date] = candle
+                                // console.log('tick', symbol, moment(date).tz(TIME_ZONE).format('HH:mm'))
+                                publish('price', { symbol, fromTime: startTime, ...candle })
+                            } catch (e) {
+                                console.log(e)
+                            }
+                        } else {
+                            // await loadPrevious([symbol], date)
+                            // await loadLocal(symbol)
+                            // loadPrevious([symbol], date).then(() => loadLocal(symbol)).catch(_.noop)
+                            let index = symbols.indexOf(symbol)
+                            ~index && symbols.splice(index, 1)
+                        }
+                    });
+                    priceChanged({
+                        symbols,
+                        fromTime: startTime, nowTime: date,
+                        allSymbolsCandles
+                    })
+                    resolve()
+                }, date - Date.now())
             })
         }
 
         saveLogs()
         console.log('END')
+
+        async function getBinanceCandle(symbol, date) {
+            const result = {}
+            await loadPreviousDate([symbol], date, result)
+            return result[symbol]
+        }
+
     }
 
     function saveLogs() {
@@ -117,11 +133,11 @@ function initLog(algo, time) {
     const logfn = console.log
     try {
         fs.unlinkSync(getLogFileName(algo, time) + '.log');
-    }catch (e) {
-        
+    } catch (e) {
+
     }
     console.log = (...args) => {
         logfn.apply(console, args)
-        fs.appendFileSync(getLogFileName(algo, time) + '.log',args.join(' ')+'\n');
+        fs.appendFileSync(getLogFileName(algo, time) + '.log', args.join(' ') + '\n');
     }
 }

@@ -70,6 +70,7 @@ async function loadPreviousDate(symbols, date, allSymbolsCandles = {}) {
 
         try {
             let interval = '1m', limit = 60 * 24, startTime = +new Date(date)
+            //load last one day candle
             allSymbolsCandles[symbol] = await loadCandles(symbol, interval, limit, startTime);
             let mostRecentDate = +_.first(_.keys(allSymbolsCandles[symbol]))
             if (startTime !== mostRecentDate)
@@ -77,6 +78,7 @@ async function loadPreviousDate(symbols, date, allSymbolsCandles = {}) {
                     stop: true,
                     message: `most recent date is ${moment(+(mostRecentDate)).tz(TIME_ZONE).format('DD MMM HH:mm')}`
                 }
+            //build redis record
             let data = _.map(allSymbolsCandles[symbol], candle => {
                 return [candle.startTime, JSON.stringify(candle)]
             })
