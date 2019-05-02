@@ -10,7 +10,7 @@ const fs = require('fs');
 
 const moment = require('moment-timezone');
 const TIME_ZONE = 'Africa/Douala'
-const { getRedis, redisGet, publish } = require('./redis');
+const { getRedis, redisGet, publish, subscribe } = require('./redis');
 const redis = getRedis()
 const ONE_MIN = 1e3 * 60
 const ONE_DAY = ONE_MIN * 60 * 24
@@ -37,28 +37,26 @@ module.exports = async (algo, fromTime, toTime) => {
 
     async function startSimulation(startTime, closeTime, priceChanged) {
         const symbols = await redisGet('symbols')
-        await simulate(symbols, startTime, closeTime, priceChanged)
-        process.exit(0)
+        let realtime = true;
+        await simulate(symbols, startTime, closeTime, priceChanged, realtime)
+        realtime || process.exit(0)
     }
 
-    async function simulate(symbols, startTime, closeTime, priceChanged) {
+    async function simulate(symbols, startTime, closeTime, priceChanged, realtime) {
 
-        for (let date = startTime; date < closeTime; date += ONE_MIN) {
+        for (let date = startTime; date < closeTime && date < Date.now(); date += ONE_MIN) {
             await new Promise(resolve => {
                 setTimeout(async () => {
                     console.log('tick', moment(date).tz(TIME_ZONE).format('HH:mm'))
                     await Promise.mapSeries(symbols, async function loadLocalOrRemote(symbol) {
                         let data = await redis.hmgetAsync(symbol, +date)
-                        // /*--------------------------------
-                        data = data || await getBinanceCandle(symbol, +date)
-                        // ----------------------------------*/
                         if (data && (_.isArray(data) ? data[0] : true)) {
                             try {
                                 let candle = JSON.parse(data)
                                 allSymbolsCandles[symbol] = allSymbolsCandles[symbol] || {}
                                 allSymbolsCandles[symbol][+date] = candle
                                 // console.log('tick', symbol, moment(date).tz(TIME_ZONE).format('HH:mm'))
-                                publish('price', { symbol, fromTime: startTime, ...candle })
+                                publish('s:price', { symbol, fromTime: startTime, ...candle })
                             } catch (e) {
                                 console.log(e)
                             }
@@ -80,15 +78,21 @@ module.exports = async (algo, fromTime, toTime) => {
             })
         }
 
-        saveLogs()
-        console.log('END')
-
-        async function getBinanceCandle(symbol, date) {
-            const result = {}
-            await loadPreviousDate([symbol], date, result)
-            return result[symbol]
+        if (!realtime) {
+            saveLogs()
+            console.log('END')
+        } else {
+            subscribe('price', ({ symbol, close, startTime, closeTime }) => {
+                const candle = allSymbolsCandles[symbol][+startTime] = { symbol, close, startTime, closeTime }
+                // console.log('tick', symbol, moment(date).tz(TIME_ZONE).format('HH:mm'))
+                priceChanged({
+                    symbols,
+                    fromTime: startTime, nowTime: Date.now(),
+                    allSymbolsCandles
+                })
+                publish('s:price', { symbol, fromTime: startTime, ...candle })
+            })
         }
-
     }
 
     function saveLogs() {

@@ -89,7 +89,7 @@ ${limit ? `limit  ${limit.toFixed(8)}` : ''}`
         return
     }
 
-    subscribe('price', ({ symbol, close, closeTime, fromTime }) => {
+    subscribe('s:price', ({ symbol, close, closeTime, fromTime }) => {
         _.values(trades[symbol]).forEach((trade) => {
             if (!trade.open) {
                 return stop_limit_buy(trade, close, symbol);
